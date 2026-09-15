@@ -29,5 +29,6 @@ class NormalizedEvent(BaseModel):
     event_type: EventType
     username: str | None = None
     source_ip: str | None = None
+    is_privileged: bool = False
     severity: EventSeverity = EventSeverity.INFO
     raw: str

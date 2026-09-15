@@ -27,6 +27,7 @@ class EventNormalizer:
             event_type=EventType(event["event_type"]),
             username=event.get("username") or None,
             source_ip=event.get("source_ip") or None,
+            is_privileged=bool(event.get("is_privileged", False)),
             severity=EventSeverity(event.get("severity", EventSeverity.INFO)),
             raw=str(event.get("raw", "")),
         )

@@ -83,3 +83,33 @@ def test_normalized_event_rejects_extra_fields() -> None:
                 "unexpected": "value",
             }
         )
+
+
+def test_normalize_privileged_account_flag() -> None:
+    event = EventNormalizer.normalize(
+        {
+            "timestamp": "2026-09-15T17:00:00Z",
+            "host": "server01",
+            "source": "useradd",
+            "event_type": "account_created",
+            "username": "backdoor",
+            "is_privileged": True,
+            "raw": "Created privileged account",
+        }
+    )
+
+    assert event.is_privileged is True
+
+
+def test_normalize_privileged_account_flag_defaults_false() -> None:
+    event = EventNormalizer.normalize(
+        {
+            "timestamp": "2026-09-15T17:00:00Z",
+            "host": "server01",
+            "source": "useradd",
+            "event_type": "account_created",
+            "username": "ivan",
+        }
+    )
+
+    assert event.is_privileged is False

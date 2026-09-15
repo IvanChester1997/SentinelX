@@ -1,3 +1,5 @@
+from typing import Any
+
 from app.alerts.manager import AlertManager
 from app.alerts.models import Alert
 from app.api.schemas import EventRequest, EventResponse
@@ -11,6 +13,7 @@ from app.detection.rules.privilege_escalation import privilege_escalation_rule
 from app.detection.rules.privileged_account import privileged_account_rule
 from app.detection.rules.root_login import suspicious_root_login_rule
 from app.detection.rules.ssh import ssh_bruteforce_rule
+from app.events.models import NormalizedEvent
 from app.events.normalizer import EventNormalizer
 from app.incidents.correlation import CorrelationEngine
 from app.incidents.models import Incident
@@ -42,8 +45,16 @@ class MonitoringService:
         self._alerts = AlertManager()
 
     def process_event(self, request: EventRequest) -> EventResponse:
-        event = EventNormalizer.normalize(request.model_dump(mode="json"))
+        return self._process_normalized_event(
+            EventNormalizer.normalize(request.model_dump(mode="json"))
+        )
 
+    def process_collected_event(self, event_data: dict[str, Any]) -> EventResponse:
+        return self._process_normalized_event(
+            EventNormalizer.normalize(event_data)
+        )
+
+    def _process_normalized_event(self, event: NormalizedEvent) -> EventResponse:
         matches = self._detection_engine.process(event)
         matches.extend(self._password_spraying.process(event))
         matches.extend(self._privileged_account.process(event))

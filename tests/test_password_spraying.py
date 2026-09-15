@@ -96,3 +96,28 @@ def test_password_spraying_isolated_by_source_ip() -> None:
             source_ip="10.0.0.22",
         )
     ) == []
+
+def test_password_spraying_triggers_again_after_window() -> None:
+    detector = PasswordSprayingDetector(password_spraying_rule())
+    base = datetime(2026, 9, 15, 17, 0, tzinfo=UTC)
+    users = ["alice", "bob", "charlie", "dave", "eve"]
+
+    for index, username in enumerate(users):
+        matches = detector.process(
+            make_auth_failure(
+                base + timedelta(seconds=index * 30),
+                username,
+            )
+        )
+        assert len(matches) == (0 if index < 4 else 1)
+
+    second_base = base + timedelta(seconds=301)
+
+    for index, username in enumerate(users):
+        matches = detector.process(
+            make_auth_failure(
+                second_base + timedelta(seconds=index * 30),
+                username,
+            )
+        )
+        assert len(matches) == (0 if index < 4 else 1)

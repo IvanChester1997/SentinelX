@@ -1,6 +1,5 @@
-from datetime import timedelta
-
 from app.detection.models import DetectionMatch, DetectionRule
+from app.detection.state import DetectionState
 from app.events.models import NormalizedEvent
 
 
@@ -10,28 +9,22 @@ class PasswordSprayingDetector:
     def __init__(self, rule: DetectionRule, min_unique_users: int = 3) -> None:
         self._rule = rule
         self._min_unique_users = min_unique_users
-        self._history: list[NormalizedEvent] = []
-        self._last_matches: dict[tuple[str, tuple[str, ...]], object] = {}
+        self._state = DetectionState()
 
     def process(self, event: NormalizedEvent) -> list[DetectionMatch]:
         if event.event_type != self._rule.event_type:
             return []
 
-        self._history.append(event)
-        window_start = event.timestamp - timedelta(seconds=self._rule.window_seconds)
-
-        self._history = [
-            item
-            for item in self._history
-            if item.timestamp >= window_start
-        ]
+        self._state.add(event)
 
         group_key = self._group_key(event)
         matching_events = [
             item
-            for item in self._history
+            for item in self._state.events_in_window(
+                event,
+                self._rule.window_seconds,
+            )
             if item.event_type == self._rule.event_type
-            and item.timestamp >= window_start
             and self._group_key(item) == group_key
         ]
 
@@ -47,15 +40,19 @@ class PasswordSprayingDetector:
         if len(unique_users) < self._min_unique_users:
             return []
 
-        match_key = (self._rule.name, group_key)
-        last_match = self._last_matches.get(match_key)
+        if self._state.is_suppressed(
+            self._rule.name,
+            group_key,
+            event.timestamp,
+            self._rule.window_seconds,
+        ):
+            return []
 
-        if last_match is not None:
-            if event.timestamp < last_match + timedelta(seconds=self._rule.window_seconds):
-                return []
-            del self._last_matches[match_key]
-
-        self._last_matches[match_key] = event.timestamp
+        self._state.record_match(
+            self._rule.name,
+            group_key,
+            event.timestamp,
+        )
 
         return [
             DetectionMatch(

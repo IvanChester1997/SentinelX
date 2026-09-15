@@ -98,3 +98,45 @@ def test_unknown_alert_returns_none() -> None:
     assert manager.get("ALT-999999") is None
     assert manager.acknowledge("ALT-999999") is None
     assert manager.resolve("ALT-999999") is None
+
+
+def test_create_or_update_reuses_active_alert() -> None:
+    manager = AlertManager()
+
+    first = manager.create_or_update(make_incident(), make_risk())
+
+    updated_incident = make_incident().model_copy(
+        update={
+            "last_seen": BASE_TIME.replace(minute=5),
+            "detection_count": 6,
+        }
+    )
+    updated_risk = make_risk().model_copy(
+        update={
+            "score": 90,
+            "level": RiskLevel.CRITICAL,
+            "detection_count": 6,
+        }
+    )
+
+    second = manager.create_or_update(updated_incident, updated_risk)
+
+    assert second.id == first.id
+    assert second.incident_id == first.incident_id
+    assert second.created_at == first.created_at
+    assert second.updated_at == updated_incident.last_seen
+    assert second.risk_score == 90
+    assert second.risk_level == RiskLevel.CRITICAL
+    assert second.status == AlertStatus.NEW
+
+
+def test_create_or_update_creates_new_alert_after_resolution() -> None:
+    manager = AlertManager()
+
+    first = manager.create_or_update(make_incident(), make_risk())
+    manager.resolve(first.id)
+
+    second = manager.create_or_update(make_incident(), make_risk())
+
+    assert second.id != first.id
+    assert second.status == AlertStatus.NEW

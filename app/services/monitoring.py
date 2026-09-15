@@ -57,7 +57,7 @@ class MonitoringService:
         for match in matches:
             incident = self._correlation.process(match)
             risk = self._risk.assess(incident)
-            alert = self._alerts.create(incident, risk)
+            alert = self._alerts.create_or_update(incident, risk)
 
             incidents.append(incident)
             risks.append(risk)

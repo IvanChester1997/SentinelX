@@ -29,6 +29,24 @@ class AlertManager:
         self._alerts[alert.id] = alert
         return alert
 
+    def create_or_update(
+        self,
+        incident: Incident,
+        risk: RiskAssessment,
+    ) -> Alert:
+        for alert in self._alerts.values():
+            if (
+                alert.incident_id == incident.id
+                and alert.status != AlertStatus.RESOLVED
+            ):
+                alert.severity = incident.severity
+                alert.risk_score = risk.score
+                alert.risk_level = risk.level
+                alert.updated_at = incident.last_seen
+                return alert
+
+        return self.create(incident, risk)
+
     def get(self, alert_id: str) -> Alert | None:
         return self._alerts.get(alert_id)
 

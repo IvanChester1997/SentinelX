@@ -1,6 +1,5 @@
-from datetime import timedelta
-
 from app.detection.models import DetectionMatch, DetectionRule
+from app.detection.state import DetectionState
 from app.events.models import NormalizedEvent
 
 
@@ -9,29 +8,23 @@ class DetectionEngine:
 
     def __init__(self, rules: list[DetectionRule]) -> None:
         self._rules = rules
-        self._history: list[NormalizedEvent] = []
-        self._last_matches: dict[tuple[str, tuple[str, ...]], object] = {}
+        self._state = DetectionState()
 
     def process(self, event: NormalizedEvent) -> list[DetectionMatch]:
-        self._history.append(event)
+        self._state.add(event)
         matches: list[DetectionMatch] = []
 
         for rule in self._rules:
             if event.event_type != rule.event_type:
                 continue
 
-            window_start = event.timestamp - timedelta(seconds=rule.window_seconds)
-            self._history = [
-                item
-                for item in self._history
-                if item.timestamp >= window_start
-            ]
-
             matching_events = [
                 item
-                for item in self._history
+                for item in self._state.events_in_window(
+                    event,
+                    rule.window_seconds,
+                )
                 if item.event_type == rule.event_type
-                and item.timestamp >= window_start
                 and self._same_group(item, event, rule)
             ]
 
@@ -39,15 +32,19 @@ class DetectionEngine:
                 continue
 
             group_key = self._group_key(event, rule)
-            match_key = (rule.name, group_key)
-            last_match = self._last_matches.get(match_key)
+            if self._state.is_suppressed(
+                rule.name,
+                group_key,
+                event.timestamp,
+                rule.window_seconds,
+            ):
+                continue
 
-            if last_match is not None:
-                if event.timestamp < last_match + timedelta(seconds=rule.window_seconds):
-                    continue
-                del self._last_matches[match_key]
-
-            self._last_matches[match_key] = event.timestamp
+            self._state.record_match(
+                rule.name,
+                group_key,
+                event.timestamp,
+            )
 
             matches.append(
                 DetectionMatch(

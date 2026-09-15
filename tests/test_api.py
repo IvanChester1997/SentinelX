@@ -118,3 +118,57 @@ def test_alert_list_api() -> None:
     response = client.get("/api/v1/alerts")
     assert response.status_code == 200
     assert any(alert["id"] == alert_id for alert in response.json())
+
+
+def test_end_to_end_monitoring_flow() -> None:
+    event = {
+        "timestamp": "2026-09-15T17:10:00Z",
+        "host": "e2e-server",
+        "source": "sshd",
+        "event_type": "authentication_success",
+        "username": "root",
+        "source_ip": "10.0.0.50",
+        "raw": "Accepted publickey for root",
+    }
+
+    response = client.post("/api/v1/events", json=event)
+    assert response.status_code == 202
+
+    body = response.json()
+    assert body["detection_count"] == 1
+
+    incident_id = body["incidents"][0]["id"]
+    alert_id = body["alerts"][0]["id"]
+
+    assert body["incidents"][0]["status"] == "open"
+    assert body["risks"][0]["score"] == 75
+    assert body["risks"][0]["level"] == "high"
+    assert body["alerts"][0]["incident_id"] == incident_id
+    assert body["alerts"][0]["status"] == "new"
+
+    response = client.get(f"/api/v1/incidents/{incident_id}")
+    assert response.status_code == 200
+    assert response.json()["id"] == incident_id
+
+    response = client.get(f"/api/v1/alerts/{alert_id}")
+    assert response.status_code == 200
+    assert response.json()["incident_id"] == incident_id
+
+    response = client.patch(f"/api/v1/alerts/{alert_id}/acknowledge")
+    assert response.status_code == 200
+    assert response.json()["status"] == "acknowledged"
+
+    response = client.patch(f"/api/v1/alerts/{alert_id}/resolve")
+    assert response.status_code == 200
+    assert response.json()["status"] == "resolved"
+
+    event["timestamp"] = "2026-09-15T17:15:01Z"
+    response = client.post("/api/v1/events", json=event)
+    assert response.status_code == 202
+
+    body = response.json()
+    assert body["detection_count"] == 1
+    assert body["incidents"][0]["id"] == incident_id
+    assert body["alerts"][0]["id"] != alert_id
+    assert body["alerts"][0]["incident_id"] == incident_id
+    assert body["alerts"][0]["status"] == "new"

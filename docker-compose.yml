@@ -1,0 +1,10 @@
+services:
+  sentinelx:
+    build: .
+    container_name: sentinelx
+    ports:
+      - "8000:8000"
+    environment:
+      SENTINELX_ENVIRONMENT: docker
+      SENTINELX_DEBUG: "false"
+    restart: unless-stopped

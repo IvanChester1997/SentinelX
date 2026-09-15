@@ -35,6 +35,15 @@ class CorrelationEngine:
 
         return incident
 
+    def list(self) -> list[Incident]:
+        return list(self._incidents.values())
+
+    def get_by_id(self, incident_id: str) -> Incident | None:
+        return next(
+            (incident for incident in self._incidents.values() if incident.id == incident_id),
+            None,
+        )
+
     def get(self, rule_name: str, group_key: tuple[str, ...]) -> Incident | None:
         return self._incidents.get((rule_name, group_key))
 

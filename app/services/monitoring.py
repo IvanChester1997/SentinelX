@@ -71,6 +71,15 @@ class MonitoringService:
             alerts=alerts,
         )
 
+    def list_incidents(self) -> list[Incident]:
+        return self._correlation.list()
+
+    def get_incident(self, incident_id: str) -> Incident | None:
+        return self._correlation.get_by_id(incident_id)
+
+    def list_alerts(self) -> list[Alert]:
+        return self._alerts.list()
+
     def get_alert(self, alert_id: str) -> Alert | None:
         return self._alerts.get(alert_id)
 

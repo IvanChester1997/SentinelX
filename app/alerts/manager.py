@@ -47,6 +47,9 @@ class AlertManager:
 
         return self.create(incident, risk)
 
+    def list(self) -> list[Alert]:
+        return list(self._alerts.values())
+
     def get(self, alert_id: str) -> Alert | None:
         return self._alerts.get(alert_id)
 

@@ -83,3 +83,46 @@ def test_collector_event_flows_through_monitoring_service(tmp_path) -> None:
     assert response.risks[0].score == 75
     assert response.risks[0].level == "high"
     assert response.alerts[0].status == "new"
+
+
+def test_collector_follow_reads_new_events(tmp_path) -> None:
+    from threading import Event, Thread
+
+    log = tmp_path / "auth.log"
+    log.write_text(
+        "Sep 15 17:10:00 sentinel sshd[1234]: "
+        "Accepted publickey for alice from 10.0.0.20 port 54321 ssh2\n",
+        encoding="utf-8",
+    )
+
+    stop_event = Event()
+    collector = LinuxAuthLogCollector(log)
+    events = collector.follow(
+        poll_interval=0.01,
+        start_at_end=True,
+        stop_event=stop_event,
+    )
+
+    result: list[dict[str, object]] = []
+
+    def consume() -> None:
+        result.append(next(events))
+
+    thread = Thread(target=consume)
+    thread.start()
+
+    with log.open("a", encoding="utf-8") as handle:
+        handle.write(
+            "Sep 15 17:11:00 sentinel sshd[1234]: "
+            "Failed password for root from 10.0.0.50 port 54321 ssh2\n"
+        )
+        handle.flush()
+
+    thread.join(timeout=1)
+
+    assert not thread.is_alive()
+    assert result[0]["event_type"] == "authentication_failure"
+    assert result[0]["username"] == "root"
+
+    stop_event.set()
+    events.close()

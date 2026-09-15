@@ -1,4 +1,5 @@
 import re
+import time
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
@@ -86,3 +87,27 @@ class LinuxAuthLogCollector:
                 event = self._parser.parse_line(line)
                 if event is not None:
                     yield event
+
+    def follow(
+        self,
+        poll_interval: float = 0.1,
+        start_at_end: bool = True,
+        stop_event: object | None = None,
+    ) -> Iterator[dict[str, object]]:
+        with self._path.open("r", encoding="utf-8", errors="replace") as handle:
+            if start_at_end:
+                handle.seek(0, 2)
+
+            while True:
+                line = handle.readline()
+
+                if line:
+                    event = self._parser.parse_line(line)
+                    if event is not None:
+                        yield event
+                    continue
+
+                if stop_event is not None and stop_event.is_set():
+                    return
+
+                time.sleep(poll_interval)

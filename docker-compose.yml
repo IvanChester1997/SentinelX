@@ -7,6 +7,12 @@ services:
     environment:
       SENTINELX_ENVIRONMENT: docker
       SENTINELX_DEBUG: "false"
+    volumes:
+      - sentinelx-data:/app/data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     restart: unless-stopped
 
   security-target:
@@ -15,3 +21,6 @@ services:
     ports:
       - "2222:22"
     restart: "no"
+
+volumes:
+  sentinelx-data:

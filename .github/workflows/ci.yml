@@ -27,3 +27,6 @@ jobs:
 
       - name: Tests
         run: pytest -q --cov=app --cov-report=term-missing
+
+      - name: Dependency Audit
+        run: pip-audit

@@ -2,11 +2,12 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.alerts.models import Alert
 from app.api.schemas import EventRequest, EventResponse
+from app.core.config import settings
 from app.incidents.models import Incident
 from app.services.monitoring import MonitoringService
 
 router = APIRouter(prefix="/api/v1")
-service = MonitoringService()
+service = MonitoringService(db_path=settings.database_path)
 
 
 @router.post(

@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Any
 
 from app.alerts.manager import AlertManager
@@ -19,12 +20,15 @@ from app.incidents.correlation import CorrelationEngine
 from app.incidents.models import Incident
 from app.risk.engine import RiskEngine
 from app.risk.models import RiskAssessment
+from app.storage.alert_repository import AlertRepository
+from app.storage.database import Database
+from app.storage.incident_repository import IncidentRepository
 
 
 class MonitoringService:
     """Orchestrate event processing across SentinelX detection layers."""
 
-    def __init__(self) -> None:
+    def __init__(self, db_path: str | Path = ":memory:") -> None:
         self._detection_engine = DetectionEngine(
             rules=[ssh_bruteforce_rule()],
         )
@@ -43,6 +47,13 @@ class MonitoringService:
         self._correlation = CorrelationEngine()
         self._risk = RiskEngine()
         self._alerts = AlertManager()
+
+        self._database = Database(db_path)
+        self._incidents_repository = IncidentRepository(self._database)
+        self._alerts_repository = AlertRepository(self._database)
+
+        self._correlation.load(self._incidents_repository.list())
+        self._alerts.load(self._alerts_repository.list())
 
     def process_event(self, request: EventRequest) -> EventResponse:
         return self._process_normalized_event(
@@ -70,6 +81,9 @@ class MonitoringService:
             risk = self._risk.assess(incident)
             alert = self._alerts.create_or_update(incident, risk)
 
+            self._incidents_repository.save(incident)
+            self._alerts_repository.save(alert)
+
             incidents.append(incident)
             risks.append(risk)
             alerts.append(alert)
@@ -95,7 +109,13 @@ class MonitoringService:
         return self._alerts.get(alert_id)
 
     def acknowledge_alert(self, alert_id: str) -> Alert | None:
-        return self._alerts.acknowledge(alert_id)
+        alert = self._alerts.acknowledge(alert_id)
+        if alert is not None:
+            self._alerts_repository.save(alert)
+        return alert
 
     def resolve_alert(self, alert_id: str) -> Alert | None:
-        return self._alerts.resolve(alert_id)
+        alert = self._alerts.resolve(alert_id)
+        if alert is not None:
+            self._alerts_repository.save(alert)
+        return alert

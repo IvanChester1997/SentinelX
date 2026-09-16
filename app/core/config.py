@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     app_name: str = "SentinelX"
     environment: str = "development"
     debug: bool = False
+    database_path: str = "data/sentinelx.db"
 
     model_config = SettingsConfigDict(
         env_file=".env",

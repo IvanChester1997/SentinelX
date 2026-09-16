@@ -1,5 +1,6 @@
 import sqlite3
 from pathlib import Path
+from uuid import uuid4
 
 
 class Database:
@@ -7,10 +8,25 @@ class Database:
 
     def __init__(self, path: str | Path) -> None:
         self._path = str(path)
+        self._memory_uri: str | None = None
+        self._memory_anchor: sqlite3.Connection | None = None
+
+        if self._path == ":memory:":
+            self._memory_uri = f"file:sentinelx_{uuid4().hex}?mode=memory&cache=shared"
+            self._memory_anchor = sqlite3.connect(
+                self._memory_uri,
+                uri=True,
+            )
+            self._memory_anchor.row_factory = sqlite3.Row
+
         self._initialize()
 
     def connect(self) -> sqlite3.Connection:
-        connection = sqlite3.connect(self._path)
+        if self._memory_uri is not None:
+            connection = sqlite3.connect(self._memory_uri, uri=True)
+        else:
+            connection = sqlite3.connect(self._path)
+
         connection.row_factory = sqlite3.Row
         return connection
 

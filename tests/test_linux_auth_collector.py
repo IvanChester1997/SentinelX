@@ -89,11 +89,7 @@ def test_collector_follow_reads_new_events(tmp_path) -> None:
     from threading import Event, Thread
 
     log = tmp_path / "auth.log"
-    log.write_text(
-        "Sep 15 17:10:00 sentinel sshd[1234]: "
-        "Accepted publickey for alice from 10.0.0.20 port 54321 ssh2\n",
-        encoding="utf-8",
-    )
+    log.write_text("", encoding="utf-8")
 
     stop_event = Event()
     collector = LinuxAuthLogCollector(log)

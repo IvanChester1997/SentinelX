@@ -106,3 +106,34 @@ def test_resolved_incident_can_be_acknowledged_no_longer() -> None:
     engine.resolve("ssh_bruteforce", ("10.0.0.10",))
 
     assert engine.acknowledge("ssh_bruteforce", ("10.0.0.10",)) is None
+
+
+def test_load_restores_incidents_and_continues_id_sequence() -> None:
+    engine = CorrelationEngine()
+
+    restored = make_match(source_ip="10.0.0.20")
+    first = engine.process(restored)
+    first.id = "INC-000007"
+
+    engine = CorrelationEngine()
+    from app.incidents.models import Incident
+
+    incident = Incident(
+        id="INC-000007",
+        rule_name="ssh_bruteforce",
+        severity=EventSeverity.HIGH,
+        first_seen=BASE_TIME,
+        last_seen=BASE_TIME,
+        group_key=("10.0.0.20",),
+        detection_count=3,
+    )
+
+    engine.load([incident])
+
+    assert engine.get("ssh_bruteforce", ("10.0.0.20",)) == incident
+
+    created = engine.process(
+        make_match(source_ip="10.0.0.30"),
+    )
+
+    assert created.id == "INC-000008"

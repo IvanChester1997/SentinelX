@@ -140,3 +140,31 @@ def test_create_or_update_creates_new_alert_after_resolution() -> None:
 
     assert second.id != first.id
     assert second.status == AlertStatus.NEW
+
+
+def test_load_restores_alerts_and_continues_id_sequence() -> None:
+    from app.alerts.models import Alert
+
+    alert = Alert(
+        id="ALT-000007",
+        incident_id="INC-000007",
+        rule_name="ssh_bruteforce",
+        severity=EventSeverity.HIGH,
+        risk_score=85,
+        risk_level=RiskLevel.HIGH,
+        status=AlertStatus.NEW,
+        created_at=BASE_TIME,
+        updated_at=BASE_TIME,
+    )
+
+    manager = AlertManager()
+    manager.load([alert])
+
+    assert manager.get("ALT-000007") == alert
+
+    second = manager.create(
+        make_incident().model_copy(update={"id": "INC-000008"}),
+        make_risk(),
+    )
+
+    assert second.id == "ALT-000008"

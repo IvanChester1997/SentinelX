@@ -35,6 +35,22 @@ class CorrelationEngine:
 
         return incident
 
+    def load(self, incidents: list[Incident]) -> None:
+        self._incidents.clear()
+        self._next_id = 1
+
+        for incident in incidents:
+            key = (incident.rule_name, incident.group_key)
+            self._incidents[key] = incident
+
+            prefix = "INC-"
+            if incident.id.startswith(prefix):
+                try:
+                    number = int(incident.id[len(prefix):])
+                except ValueError:
+                    continue
+                self._next_id = max(self._next_id, number + 1)
+
     def list(self) -> list[Incident]:
         return list(self._incidents.values())
 

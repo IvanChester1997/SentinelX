@@ -47,6 +47,19 @@ class AlertManager:
 
         return self.create(incident, risk)
 
+    def load(self, alerts: list[Alert]) -> None:
+        self._alerts = {alert.id: alert for alert in alerts}
+        self._next_id = 1
+
+        for alert in alerts:
+            prefix = "ALT-"
+            if alert.id.startswith(prefix):
+                try:
+                    number = int(alert.id[len(prefix):])
+                except ValueError:
+                    continue
+                self._next_id = max(self._next_id, number + 1)
+
     def list(self) -> list[Alert]:
         return list(self._alerts.values())
 

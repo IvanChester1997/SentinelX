@@ -8,3 +8,10 @@ services:
       SENTINELX_ENVIRONMENT: docker
       SENTINELX_DEBUG: "false"
     restart: unless-stopped
+
+  security-target:
+    build: ./lab/security-target
+    container_name: sentinelx-security-target
+    ports:
+      - "2222:22"
+    restart: "no"

@@ -21,6 +21,14 @@ class Database:
 
         self._initialize()
 
+    def close(self) -> None:
+        if self._memory_anchor is not None:
+            self._memory_anchor.close()
+            self._memory_anchor = None
+
+    def __del__(self) -> None:
+        self.close()
+
     def connect(self) -> sqlite3.Connection:
         if self._memory_uri is not None:
             connection = sqlite3.connect(self._memory_uri, uri=True)

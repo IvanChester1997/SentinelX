@@ -283,3 +283,63 @@ def test_end_to_end_privilege_escalation_detection() -> None:
     assert alert["risk_score"] == 75
     assert alert["risk_level"] == "high"
     assert alert["status"] == "new"
+
+
+def test_end_to_end_privileged_account_detection() -> None:
+    base_event = {
+        "timestamp": "2026-09-15T18:10:00Z",
+        "host": "account-e2e-server",
+        "source": "auditd",
+        "event_type": "account_created",
+        "username": "service-admin",
+        "source_ip": "10.0.0.80",
+        "raw": "Created privileged account service-admin",
+    }
+
+    response = client.post(
+        "/api/v1/events",
+        json={**base_event, "is_privileged": False},
+    )
+
+    assert response.status_code == 202
+    assert response.json()["detection_count"] == 0
+    assert response.json()["incidents"] == []
+    assert response.json()["risks"] == []
+    assert response.json()["alerts"] == []
+
+    response = client.post(
+        "/api/v1/events",
+        json={**base_event, "is_privileged": True},
+    )
+
+    assert response.status_code == 202
+
+    body = response.json()
+
+    matches = [
+        index
+        for index, incident in enumerate(body["incidents"])
+        if incident["rule_name"] == "privileged_account_created"
+    ]
+
+    assert len(matches) == 1
+
+    index = matches[0]
+    incident = body["incidents"][index]
+    risk = body["risks"][index]
+    alert = body["alerts"][index]
+
+    assert incident["severity"] == "high"
+    assert incident["status"] == "open"
+    assert incident["detection_count"] == 1
+    assert incident["group_key"] == ["account-e2e-server", "service-admin"]
+
+    assert risk["score"] == 75
+    assert risk["level"] == "high"
+    assert risk["severity"] == "high"
+
+    assert alert["rule_name"] == "privileged_account_created"
+    assert alert["incident_id"] == incident["id"]
+    assert alert["risk_score"] == 75
+    assert alert["risk_level"] == "high"
+    assert alert["status"] == "new"

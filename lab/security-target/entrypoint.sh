@@ -1,7 +1,8 @@
 #!/bin/sh
 set -eu
 
-touch /var/log/auth.log
+mkdir -p /shared
+touch /shared/auth.log
 
 rsyslogd
 

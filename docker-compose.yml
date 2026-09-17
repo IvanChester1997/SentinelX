@@ -9,6 +9,7 @@ services:
       SENTINELX_DEBUG: "false"
     volumes:
       - sentinelx-data:/app/data
+      - sentinelx-auth-log:/shared:ro
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -20,7 +21,10 @@ services:
     container_name: sentinelx-security-target
     ports:
       - "2222:22"
+    volumes:
+      - sentinelx-auth-log:/shared
     restart: "no"
 
 volumes:
   sentinelx-data:
+  sentinelx-auth-log:

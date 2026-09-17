@@ -96,6 +96,20 @@
             font-weight: 500;
         }
 
+        button {
+            margin-left: 8px;
+            padding: 4px 8px;
+            border: 1px solid #374151;
+            border-radius: 6px;
+            background: #1f2937;
+            color: #e5e7eb;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #374151;
+        }
+
         .severity-critical,
         .severity-high {
             color: #fca5a5;
@@ -206,7 +220,22 @@
                     <td>{{ alert.id }}</td>
                     <td>{{ alert.rule_name }}</td>
                     <td>{{ alert.risk_level }} ({{ alert.risk_score }})</td>
-                    <td class="status">{{ alert.status }}</td>
+                    <td class="status">
+                        {{ alert.status }}
+                        {% if alert.status == "new" %}
+                        <form method="post"
+                              action="/dashboard/alerts/{{ alert.id }}/acknowledge"
+                              style="display:inline">
+                            <button type="submit">Acknowledge</button>
+                        </form>
+                        {% elif alert.status == "acknowledged" %}
+                        <form method="post"
+                              action="/dashboard/alerts/{{ alert.id }}/resolve"
+                              style="display:inline">
+                            <button type="submit">Resolve</button>
+                        </form>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% else %}
                 <tr>

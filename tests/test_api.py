@@ -343,3 +343,56 @@ def test_end_to_end_privileged_account_detection() -> None:
     assert alert["risk_score"] == 75
     assert alert["risk_level"] == "high"
     assert alert["status"] == "new"
+
+
+def test_end_to_end_privilege_escalation_suppression_and_window() -> None:
+    base_event = {
+        "host": "suppression-e2e-server",
+        "source": "auditd",
+        "event_type": "privilege_escalation",
+        "username": "operator",
+        "source_ip": "10.0.0.90",
+        "raw": "sudo: operator executed privileged command",
+    }
+
+    response = client.post(
+        "/api/v1/events",
+        json={**base_event, "timestamp": "2026-09-15T18:20:00Z"},
+    )
+
+    assert response.status_code == 202
+    first_body = response.json()
+    assert first_body["detection_count"] == 1
+    assert first_body["incidents"][0]["rule_name"] == "privilege_escalation"
+
+    incident_id = first_body["incidents"][0]["id"]
+    alert_id = first_body["alerts"][0]["id"]
+
+    response = client.post(
+        "/api/v1/events",
+        json={**base_event, "timestamp": "2026-09-15T18:21:00Z"},
+    )
+
+    assert response.status_code == 202
+    suppressed_body = response.json()
+
+    assert suppressed_body["detection_count"] == 0
+    assert suppressed_body["incidents"] == []
+    assert suppressed_body["risks"] == []
+    assert suppressed_body["alerts"] == []
+
+    response = client.post(
+        "/api/v1/events",
+        json={**base_event, "timestamp": "2026-09-15T18:25:01Z"},
+    )
+
+    assert response.status_code == 202
+    after_window_body = response.json()
+
+    assert after_window_body["detection_count"] == 1
+    assert after_window_body["incidents"][0]["id"] == incident_id
+    assert after_window_body["incidents"][0]["detection_count"] == 2
+    assert after_window_body["risks"][0]["score"] == 80
+    assert after_window_body["risks"][0]["level"] == "high"
+    assert after_window_body["alerts"][0]["incident_id"] == incident_id
+    assert after_window_body["alerts"][0]["id"] == alert_id

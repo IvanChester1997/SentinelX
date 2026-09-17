@@ -95,7 +95,7 @@ def test_collector_follow_reads_new_events(tmp_path) -> None:
     collector = LinuxAuthLogCollector(log)
     events = collector.follow(
         poll_interval=0.01,
-        start_at_end=True,
+        start_at_end=False,
         stop_event=stop_event,
     )
 

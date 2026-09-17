@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="refresh" content="15">
+    <title>SentinelX Dashboard</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            font-family: Inter, system-ui, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            background: #0b1020;
+            color: #e5e7eb;
+        }
+
+        main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 32px;
+        }
+
+        h1 {
+            margin-bottom: 6px;
+        }
+
+        .subtitle {
+            color: #94a3b8;
+            margin-top: 0;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin: 28px 0;
+        }
+
+        .card,
+        .panel {
+            background: #111827;
+            border: 1px solid #1f2937;
+            border-radius: 12px;
+        }
+
+        .card {
+            padding: 20px;
+        }
+
+        .label {
+            color: #94a3b8;
+            font-size: 14px;
+        }
+
+        .value {
+            font-size: 32px;
+            font-weight: 700;
+            margin-top: 8px;
+        }
+
+        .panels {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .panel {
+            overflow: hidden;
+        }
+
+        .panel h2 {
+            font-size: 18px;
+            padding: 18px 20px;
+            margin: 0;
+            border-bottom: 1px solid #1f2937;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 12px 16px;
+            border-bottom: 1px solid #1f2937;
+            font-size: 14px;
+        }
+
+        th {
+            color: #94a3b8;
+            font-weight: 500;
+        }
+
+        .severity-critical,
+        .severity-high {
+            color: #fca5a5;
+        }
+
+        .severity-medium {
+            color: #fcd34d;
+        }
+
+        .status {
+            color: #93c5fd;
+        }
+
+        @media (max-width: 900px) {
+            .cards,
+            .panels {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 600px) {
+            main {
+                padding: 16px;
+            }
+
+            .cards,
+            .panels {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<main>
+    <h1>SentinelX</h1>
+    <p class="subtitle">Defensive Security Monitoring &amp; Detection Platform</p>
+
+    {% set open_incidents = incidents | selectattr("status", "equalto", "open") | list %}
+    {% set new_alerts = alerts | selectattr("status", "equalto", "new") | list %}
+
+    <section class="cards">
+        <div class="card">
+            <div class="label">Total Incidents</div>
+            <div class="value">{{ incidents | length }}</div>
+        </div>
+
+        <div class="card">
+            <div class="label">Open Incidents</div>
+            <div class="value">{{ open_incidents | length }}</div>
+        </div>
+
+        <div class="card">
+            <div class="label">Total Alerts</div>
+            <div class="value">{{ alerts | length }}</div>
+        </div>
+
+        <div class="card">
+            <div class="label">New Alerts</div>
+            <div class="value">{{ new_alerts | length }}</div>
+        </div>
+    </section>
+
+    <section class="panels">
+        <div class="panel">
+            <h2>Recent Incidents</h2>
+            <table>
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Rule</th>
+                    <th>Severity</th>
+                    <th>Status</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for incident in incidents[-10:] | reverse %}
+                <tr>
+                    <td>{{ incident.id }}</td>
+                    <td>{{ incident.rule_name }}</td>
+                    <td class="severity-{{ incident.severity }}">
+                        {{ incident.severity }}
+                    </td>
+                    <td class="status">{{ incident.status }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4">No incidents detected.</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="panel">
+            <h2>Recent Alerts</h2>
+            <table>
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Rule</th>
+                    <th>Risk</th>
+                    <th>Status</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for alert in alerts[-10:] | reverse %}
+                <tr>
+                    <td>{{ alert.id }}</td>
+                    <td>{{ alert.rule_name }}</td>
+                    <td>{{ alert.risk_level }} ({{ alert.risk_score }})</td>
+                    <td class="status">{{ alert.status }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4">No alerts generated.</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+</body>
+</html>

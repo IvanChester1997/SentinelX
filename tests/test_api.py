@@ -172,3 +172,67 @@ def test_end_to_end_monitoring_flow() -> None:
     assert body["alerts"][0]["id"] != alert_id
     assert body["alerts"][0]["incident_id"] == incident_id
     assert body["alerts"][0]["status"] == "new"
+
+
+def test_end_to_end_password_spraying_detection() -> None:
+    users = ["spray-alice", "spray-bob", "spray-charlie", "spray-dave", "spray-eve"]
+    source_ip = "10.0.0.60"
+
+    last_body = None
+
+    for index, username in enumerate(users):
+        response = client.post(
+            "/api/v1/events",
+            json={
+                "timestamp": f"2026-09-15T17:2{index}:00Z",
+                "host": "spray-e2e-server",
+                "source": "sshd",
+                "event_type": "authentication_failure",
+                "username": username,
+                "source_ip": source_ip,
+                "raw": f"Failed password for {username} from {source_ip}",
+            },
+        )
+
+        assert response.status_code == 202
+
+        body = response.json()
+
+        if index < 4:
+            assert body["detection_count"] == 0
+            assert body["incidents"] == []
+            assert body["risks"] == []
+            assert body["alerts"] == []
+        else:
+            last_body = body
+
+    assert last_body is not None
+    assert last_body["detection_count"] >= 1
+
+    password_spraying = [
+        index
+        for index, incident in enumerate(last_body["incidents"])
+        if incident["rule_name"] == "password_spraying"
+    ]
+
+    assert len(password_spraying) == 1
+
+    index = password_spraying[0]
+    incident = last_body["incidents"][index]
+    risk = last_body["risks"][index]
+    alert = last_body["alerts"][index]
+
+    assert incident["severity"] == "high"
+    assert incident["status"] == "open"
+    assert incident["detection_count"] == 1
+    assert incident["group_key"] == [source_ip]
+
+    assert risk["score"] == 75
+    assert risk["level"] == "high"
+    assert risk["severity"] == "high"
+
+    assert alert["rule_name"] == "password_spraying"
+    assert alert["incident_id"] == incident["id"]
+    assert alert["risk_score"] == 75
+    assert alert["risk_level"] == "high"
+    assert alert["status"] == "new"
